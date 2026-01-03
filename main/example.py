@@ -148,7 +148,14 @@ def random_move(*e):
     legal_moves = list(board.legal_moves)
     if not legal_moves: return
     board.start_move_animation(random.choice(legal_moves))
-
+colors_index = 0
+colors = ["#f00","#0f0","#00f","#ff0","#0ff","#f0f"]
+def next_color():
+    global colors_index
+    colors_index += 1
+    if colors_index == len(colors):
+        colors_index = 0
+    board.arrow_color = board.circle_color = colors[colors_index]
 root = tk.Tk()
 root.title("AutoAnalyzer + Board integration demo")
 root.configure(background="#fcc")
@@ -170,6 +177,7 @@ root.bind("<Key-r>", random_move)
 root.protocol("WM_DELETE_WINDOW", on_close)
 root.bind("<Right>", lambda e: san_list.next())
 root.bind("<Left>", lambda e: san_list.prev())
+root.bind("<Key-c>", lambda e: next_color())
 tk.Button(right, text="Export SVG", command=export_svg,relief="ridge", bd=3).pack(fill="x",padx=10,pady=10)
 tk.Button(right, text="Export PGN", command=export_pgn,relief="ridge", bd=3).pack(fill="x",padx=10,pady=10)
 tk.Button(right, text="<", command=san_list.prev, relief="ridge", bd=3).pack(side="left", fill="both",expand=True,padx=10,pady=10)
