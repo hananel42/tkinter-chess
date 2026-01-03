@@ -75,7 +75,7 @@ class MoveQuality(Enum):
     MISS = auto()
 
 
-# noinspection PyTypeChecker
+
 class DisplayBoard(tk.Frame):
     """
     DisplayBoard is a self-contained Tkinter widget that visualizes and interacts
@@ -587,13 +587,10 @@ class DisplayBoard(tk.Frame):
         color_hex = self.rgb_to_hex(color)
         x1, y1 = start
         x2, y2 = end
-        self.canvas.create_line(x1, y1, x2, y2, width=width, fill=color_hex, capstyle=tk.ROUND, joinstyle=tk.ROUND,
-                                smooth=True)
+        self.canvas.create_line(x1, y1, x2, y2, width=width, fill=color_hex, smooth=True)
         left, right = self._get_arrow_cords(x1, x2, y1, y2)
-        self.canvas.create_line(x2, y2, left[0], left[1], width=width, fill=color_hex, capstyle=tk.ROUND,
-                                joinstyle=tk.ROUND, smooth=True)
-        self.canvas.create_line(x2, y2, right[0], right[1], width=width, fill=color_hex, capstyle=tk.ROUND,
-                                joinstyle=tk.ROUND, smooth=True)
+        self.canvas.create_line(x2, y2, left[0], left[1], width=width, fill=color_hex, smooth=True)
+        self.canvas.create_line(x2, y2, right[0], right[1], width=width, fill=color_hex, smooth=True)
 
     def _draw_coordinates(self):
         """Draw board coordinates (a-h and 1-8) around the board."""
@@ -739,7 +736,7 @@ class DisplayBoard(tk.Frame):
                    tr2 * self.square_size + self.square_size // 2)
             self._draw_arrow(start, end, color=color, width=width)
 
-    def _draw_move_quality(self, color, symbol, square):
+    def _get_move_quality_draw_info(self, color, symbol, square):
 
         row, col = self.row_col_of(square)
         if self.flipped:
@@ -754,15 +751,11 @@ class DisplayBoard(tk.Frame):
         bg_hex = self.rgb_to_hex(color)
         outline_hex = self.rgb_to_hex(tuple(max(0, min(255, int(c * 0.6))) for c in color))
 
-        self.canvas.create_oval(
-            cx - radius, cy - radius, cx + radius, cy + radius,
-            fill=bg_hex, outline=outline_hex, width=max(2, int(radius * 0.18))
-        )
+
 
         font_size = max(8, int(radius * 0.9))
-        txt_font = tkinter.font.Font(family="Arial", size=font_size)
 
-        self.canvas.create_text(cx, cy, text=symbol, font=txt_font, fill="black")
+        return radius,cx,cy,bg_hex,outline_hex,font_size
 
     def _draw_move_quality_badge(self):
         if not self._last_move_quality or not self.highlighted_move:
@@ -770,7 +763,13 @@ class DisplayBoard(tk.Frame):
         color = self.move_quality_colors.get(self._last_move_quality, (0, 0, 0))
         symbol = self.quality_symbols.get(self._last_move_quality, "error")
 
-        self._draw_move_quality(color, symbol, self.highlighted_move.to_square)
+        radius,cx,cy,bg_hex,outline_hex,font_size = self._get_move_quality_draw_info(color, symbol, self.highlighted_move.to_square)
+
+        self.canvas.create_oval(
+            cx - radius, cy - radius, cx + radius, cy + radius,
+            fill=bg_hex, outline=outline_hex, width=max(2, int(radius * 0.18))
+        )
+        self.canvas.create_text(cx, cy, text=symbol, font=self.font, fill="black")
 
     def _show_selected(self):
         """Highlight the selected square and optionally show legal move circles for that piece."""
@@ -932,8 +931,7 @@ class DisplayBoard(tk.Frame):
         self._last_move_quality = quality
         self.after(0, self.redraw)
 
-    def clear_user_draw(self, highlights: bool = True, circles: bool = True, arrows: bool = True,
-                        last_move: bool = False):
+    def clear_user_draw(self, highlights: bool = True, circles: bool = True, arrows: bool = True,last_move: bool = False):
         """Clear overlay lists selectively."""
 
         if highlights:
@@ -1010,8 +1008,7 @@ class DisplayBoard(tk.Frame):
         """
         return self.board.copy()
 
-    def make_move(self, from_square, to_square, promo_piece=None, callback: bool = True, animate: bool = True) -> \
-    Optional[chess.Move]:
+    def make_move(self, from_square, to_square, promo_piece=None, callback: bool = True, animate: bool = True) -> Optional[chess.Move]:
         """
         Attempt to execute a move from one square to another.
 
@@ -1154,8 +1151,7 @@ class DisplayBoard(tk.Frame):
         elif delete:
             list_.remove(item)
 
-    def draw_arrow(self, from_row: int, from_col: int, to_row: int, to_col: int, color, width: int, delete: bool = True,
-                   is_user=True):
+    def draw_arrow(self, from_row: int, from_col: int, to_row: int, to_col: int, color, width: int, delete: bool = True, is_user=True):
         """
         Draws an arrow on the game board.
 
@@ -1206,40 +1202,45 @@ class DisplayBoard(tk.Frame):
                                  lambda: [self.board.set_fen(fen), self.redraw(), callback()],
                                  False, None)
 
-    def generate_svg(self, highlights: bool = True, circles: bool = True, arrows: bool = True) -> str:
+    def generate_svg(self, highlights: bool = True, circles: bool = True, arrows: bool = True,last_move:bool = True,quality:bool = True) -> str:
         """Draw the board as SVG."""
-        square_size = self.square_size
-        board_size = self.board_size
-        svg = f'<svg xmlns="http://www.w3.org/2000/svg" width="{board_size}" height="{board_size}">\n'
+        svg = f'<svg xmlns="http://www.w3.org/2000/svg" width="{self.board_size}" height="{self.board_size}">\n'
 
         # Draw squares
         for r in range(8):
             for c in range(8):
                 color = self.white_bg if (r + c) % 2 == 0 else self.black_bg
-                x = c * square_size
-                y = r * square_size
+                x = c * self.square_size
+                y = r * self.square_size
                 hex_color = self.rgb_to_hex(color)
-                svg += f'<rect x="{x}" y="{y}" width="{square_size}" height="{square_size}" fill="{hex_color}" />\n'
+                svg += f'<rect x="{x}" y="{y}" width="{self.square_size}" height="{self.square_size}" fill="{hex_color}" />\n'
+
+        if last_move and self.highlighted_move:
+            r,c = self.row_col_of(self.highlighted_move.from_square)
+            svg += f'<rect x="{c * self.square_size}" y="{r * self.square_size}" width="{self.square_size}" height="{self.square_size}" fill="{self.rgb_to_hex(self.from_color)}" />\n'
+            r, c = self.row_col_of(self.highlighted_move.to_square)
+            svg += f'<rect x="{c * self.square_size}" y="{r * self.square_size}" width="{self.square_size}" height="{self.square_size}" fill="{self.rgb_to_hex(self.to_color)}" />\n'
+
 
         if highlights:
             # Draw highlights
             for r, c, color in [*self.user_highlights, *self.system_highlights]:
                 rr, cc = (7 - r, 7 - c) if self.flipped else (r, c)
-                x = cc * square_size
-                y = rr * square_size
+                x = cc * self.square_size
+                y = rr * self.square_size
                 hex_color = self.rgb_to_hex(color)
-                svg += f'<rect x="{x}" y="{y}" width="{square_size}" height="{square_size}" fill="none" stroke="{hex_color}" stroke-width="3"/>\n'
+                svg += f'<rect x="{x}" y="{y}" width="{self.square_size}" height="{self.square_size}" fill="none" stroke="{hex_color}" stroke-width="3"/>\n'
 
         # Draw pieces (as text)
-        font_size = int(square_size * 0.7)
+        font_size = int(self.square_size * 0.7)
         for r in range(8):
             for c in range(8):
                 square = chess.square(c, 7 - r)
                 piece = self.piece_at(square)
                 if piece:
                     rr, cc = (7 - r, 7 - c) if self.flipped else (r, c)
-                    cx = cc * square_size + square_size / 2
-                    cy = rr * square_size + square_size / 2
+                    cx = cc * self.square_size + self.square_size / 2
+                    cy = rr * self.square_size + self.square_size / 2
                     symbol = self.UNICODE_PIECES[piece.symbol()]
                     svg += f'<text x="{cx}" y="{cy}" font-size="{font_size}" text-anchor="middle" dominant-baseline="middle">{symbol}</text>\n'
 
@@ -1247,8 +1248,8 @@ class DisplayBoard(tk.Frame):
             # Draw circles
             for r, c, color, radius, width in [*self.user_circles, *self.system_circles]:
                 rr, cc = (7 - r, 7 - c) if self.flipped else (r, c)
-                cx = cc * square_size + square_size / 2
-                cy = rr * square_size + square_size / 2
+                cx = cc * self.square_size + self.square_size / 2
+                cy = rr * self.square_size + self.square_size / 2
                 hex_color = self.rgb_to_hex(color)
                 svg += f'<circle cx="{cx}" cy="{cy}" r="{radius}" fill="none" stroke="{hex_color}" stroke-width="{width}"/>\n'
 
@@ -1257,10 +1258,10 @@ class DisplayBoard(tk.Frame):
             for fr, fc, tr, tc, color, width in [*self.user_arrows, *self.system_arrows]:
                 fr, fc = (7 - fr, 7 - fc) if self.flipped else (fr, fc)
                 tr, tc = (7 - tr, 7 - tc) if self.flipped else (tr, tc)
-                x1 = fc * square_size + square_size / 2
-                y1 = fr * square_size + square_size / 2
-                x2 = tc * square_size + square_size / 2
-                y2 = tr * square_size + square_size / 2
+                x1 = fc * self.square_size + self.square_size / 2
+                y1 = fr * self.square_size + self.square_size / 2
+                x2 = tc * self.square_size + self.square_size / 2
+                y2 = tr * self.square_size + self.square_size / 2
                 hex_color = self.rgb_to_hex(color)
                 left, right = self._get_arrow_cords(x1, x2, y1, y2)
 
@@ -1270,14 +1271,21 @@ class DisplayBoard(tk.Frame):
                     f'<line x1="{x2}" y1="{y2}" x2="{right[0]}" y2="{right[1]}" stroke="{hex_color}" stroke-width="{width}"/>\n'
                 )
 
+
+        if quality and self._last_move_quality and self.highlighted_move:
+            color = self.move_quality_colors.get(self._last_move_quality, (0, 0, 0))
+            symbol = self.quality_symbols.get(self._last_move_quality, " ")
+            radius,cx,cy,bg_hex,outline_hex,font_size = self._get_move_quality_draw_info(color,symbol,self.highlighted_move.to_square)
+            svg += f'<circle cx="{cx}" cy="{cy}" r="{radius}" fill="{bg_hex}" stroke="{outline_hex}" stroke-width="{max(2, int(radius * 0.18))}"/>\n'
+            svg += f'<text x="{cx}" y="{cy}" font-family="Arial" font-size="{max(8, int(radius * 0.9))}" fill="black" text-anchor="middle" dominant-baseline="middle">{symbol}</text>\n'
         svg += "</svg>"
         return svg
 
-    def export_svg(self, path: str, highlights: bool = True, circles: bool = True, arrows: bool = True) -> bool:
+    def export_svg(self, path: str, highlights: bool = True, circles: bool = True, arrows: bool = True,last_move:bool = True,quality:bool = True) -> bool:
         """Export the board as SVG."""
         try:
             with open(path, 'w', encoding='utf-8') as f:
-                f.write(self.generate_svg(highlights, circles, arrows))
+                f.write(self.generate_svg(highlights, circles, arrows,last_move,quality))
             return True
         except OSError:
             return False
