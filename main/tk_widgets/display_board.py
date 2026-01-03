@@ -1205,7 +1205,19 @@ class DisplayBoard(tk.Frame):
                                  False, None)
 
     def generate_svg(self, highlights: bool = True, circles: bool = True, arrows: bool = True,last_move:bool = True,quality:bool = True) -> str:
-        """Draw the board as SVG."""
+        """
+        Generates an SVG representation of the chessboard based on the current game state.
+
+        Args:
+            highlights (bool): Whether to highlight the user's and system's moves.
+            circles (bool): Whether to draw circles around highlighted squares.
+            arrows (bool): Whether to draw arrows between moves and their targets.
+            last_move (bool): Whether to draw a quality indicator for the last move.
+            quality (bool): Whether to display additional information about the last move's quality.
+
+        Returns:
+            str: The SVG string representing the chessboard.
+        """
         svg = f'<svg xmlns="http://www.w3.org/2000/svg" width="{self.board_size}" height="{self.board_size}">\n'
 
         # Draw squares
@@ -1284,7 +1296,20 @@ class DisplayBoard(tk.Frame):
         return svg
 
     def export_svg(self, path: str, highlights: bool = True, circles: bool = True, arrows: bool = True,last_move:bool = True,quality:bool = True) -> bool:
-        """Export the board as SVG."""
+        """
+        Exports the SVG representation of the current drawing to a specified file.
+
+        Args:
+            path (str): The file path where the SVG will be saved.
+            highlights (bool, optional): Whether to include highlighted elements in the SVG. Defaults to True.
+            circles (bool, optional): Whether to include circle elements in the SVG. Defaults to True.
+            arrows (bool, optional): Whether to include arrow elements in the SVG. Defaults to True.
+            last_move (bool, optional): Whether to include the last move element in the SVG. Defaults to True.
+            quality (bool, optional): Whether to include quality element in the SVG. Defaults to True.
+
+        Returns:
+            bool: True if the export was successful, False otherwise.
+        """
         try:
             with open(path, 'w', encoding='utf-8') as f:
                 f.write(self.generate_svg(highlights, circles, arrows,last_move,quality))
@@ -1293,6 +1318,12 @@ class DisplayBoard(tk.Frame):
             return False
 
     def set_readonly(self, value: bool):
+        """
+        Sets the read-only state of the chess board.
+
+        Args:
+            value (bool): A boolean indicating whether to make the board read-only.
+        """
         self.allow_input = not value
         self.allow_dragging = not value
         self.allow_drawing = not value
@@ -1303,6 +1334,15 @@ class DisplayBoard(tk.Frame):
         self.redraw()
 
     def safe_redraw(self):
+        """
+        Schedule the redraw method to be called after a delay of 0 milliseconds.
+
+        This method ensures that the redraw operation is not called immediately, allowing
+        other events or tasks to complete before the redraw occurs. The use of `after(0)` with the redraw method
+        helps in maintaining a smooth and responsive user interface by deferring the drawing action.
+
+        No parameters are required for this method.
+        """
         return self.after(0, self.redraw)
 
     def set_board(self, board: chess.Board, animate: bool = False, callback=None):
