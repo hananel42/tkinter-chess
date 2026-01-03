@@ -57,6 +57,7 @@ import math
 import tkinter as tk
 import tkinter.font
 from enum import Enum, auto
+from gc import callbacks
 from typing import Callable, Optional, Tuple
 
 import chess
@@ -410,6 +411,7 @@ class DisplayBoard(tk.Frame):
         self._anim_after_id = None
         if not self._anim_data:
             return
+        callbacks_data = {"at_end":[],"callback":[]}
         i = 0
         while i < len(self._anim_data):
             self._anim_data[i]["frame"] += 1
@@ -418,13 +420,18 @@ class DisplayBoard(tk.Frame):
 
             if frame >= frames:
 
-                self._anim_data[i].get("at_end")()
+                callbacks_data["at_end"].append(self._anim_data[i].get("at_end"))
                 if self._anim_data[i].get("callback"):
-                    self._trigger_callback(self._anim_data[i].get("callback_data"))
+                    callbacks_data["callback"].append(self._anim_data[i].get("callback_data"))
 
                 self._anim_data.remove(self._anim_data[i])
             else:
                 i += 1
+        for i in callbacks_data["at_end"]:
+            i()
+        for i in callbacks_data["callback"]:
+            self._trigger_callback(i)
+
         self.redraw()
         if self._anim_data:
             self._schedule_next_frame()
@@ -909,11 +916,17 @@ class DisplayBoard(tk.Frame):
 
     def stop_animation(self):
         if not self._anim_data: return
+
+        callbacks = {"callbacks":[],"at_end":[]}
         for i in self._anim_data:
-            i["at_end"]()
+            callbacks["callbacks"].append(i["at_end"])
             if i["callback"]:
-                self._trigger_callback(i["callback_data"])
+                callbacks["callbacks"].append(i["callback_data"])
         self._anim_data = []
+        for i in callbacks["at_end"]:
+            i()
+        for i in callbacks["callbacks"]:
+            self._trigger_callback(i)
 
     def clear_last_move_quality(self):
         self._last_move_quality: Optional[MoveQuality] = None

@@ -1,6 +1,5 @@
 import random
 import tkinter as tk
-
 from main.analyze.analyzer import map_analysis_to_movequality, ENGINE_PATH
 from main.analyze.auto_analyzer import AutoAnalyzer, MoveAnalysis
 from main.analyze.auto_analyzer_ import TopMovesTracker
@@ -23,12 +22,6 @@ def rgb_to_hex(col):
         return col
     r, g, b = col
     return f"#{r:02x}{g:02x}{b:02x}"
-
-
-root = tk.Tk()
-root.title("AutoAnalyzer + MoveQualityOverlayBoard integration demo")
-
-
 def on_analyze(bests):
     """
     Analyzes a list of best moves and updates the game board accordingly.
@@ -54,23 +47,24 @@ def on_analyze(bests):
     board.draw_arrow(*board.row_col_of(bests[0][0].from_square), *board.row_col_of(bests[0][0].to_square),
                      (80, 80, 180), 5, delete=False, is_user=False)
     board.safe_redraw()
-
-
 def on_select(node: SanListFrame._Node, fen):
     board.stop_animation()
-    board.set_fen_with_animation(fen, lambda: tracker.set_board(board.clone_board()))
+    def a():
+        tracker.set_board(board.clone_board())
+        if node.parent:
+            board.board.set_fen(node.parent.fen)
+            move = board.board.parse_san(node.san)
+            board.push(move,True)
+    board.set_fen_with_animation(fen, a)
     board.clear_user_draw()
     board.system_arrows = []
-
-
 def on_new_analysis(ma: MoveAnalysis):
     quality = map_analysis_to_movequality(ma)
     san_list.after(0, lambda: san_list.set_move_color(san_list.get_selected_node(),
                                                       rgb_to_hex(board.move_quality_colors[quality])))
     board.after(0, board.set_move_quality(quality))
-
-
 def _on_move_callback(move, board_widget: DisplayBoard):
+    board_widget.clear_last_move_quality()
     c = board_widget.clone_board()
     c.pop()
     san = c.san(move)
@@ -86,26 +80,6 @@ def _on_move_callback(move, board_widget: DisplayBoard):
         analyzer.start_analayse(c)
     board.system_arrows = []
     tracker.set_board(board.clone_board())
-
-
-board = DisplayBoard(root, animation_fps=120)
-board.pack(expand=True, fill="both", side="left")
-tracker = TopMovesTracker(ENGINE_PATH, on_analyze, top_n=3, min_steps=1)
-board.after(0, tracker.start)
-san_list = SanListFrame(root, on_select=on_select)
-san_list.pack(expand=True, fill="y", side="right")
-
-board.on_move(_on_move_callback)
-om = OpeningManager()
-om.load_eco_pgn("analyze/eco.pgn")
-analyzer = AutoAnalyzer(
-    engine_path=ENGINE_PATH,
-    multipv=4,
-    on_new_analysis=on_new_analysis,
-    time_steps=[0.003, 0.012, 0.05, 0.2, 0.5, 2, 5],
-)
-
-
 def on_close():
     """
     This function performs the following actions when called:
@@ -121,32 +95,6 @@ def on_close():
     analyzer.quit()
     tracker.close()
     root.destroy()
-
-
-def random_move(*e):
-    """
-    Perform a random move on the current chessboard.
-
-    This function stops any ongoing animations, generates a list of all possible legal moves,
-    and selects one at random to start an animation for that move if there are any legal moves available.
-    """
-    board.stop_animation()
-    legal_moves = list(board.legal_moves)
-    if not legal_moves: return
-    board.start_move_animation(random.choice(legal_moves))
-
-
-root.bind("<Key-r>", random_move)
-# root.bind("<Return>",lambda e:san_list.go_to_start())
-root.protocol("WM_DELETE_WINDOW", on_close)
-root.bind("<Right>", lambda e: san_list.next())
-root.bind("<Left>", lambda e: san_list.prev())
-tk.Button(board, text="<", command=san_list.prev, bg="#ccc", relief="ridge", bd=3).pack(side="left", fill="both",
-                                                                                        expand=True)
-tk.Button(board, text=">", command=san_list.next, bg="#ccc", relief="ridge", bd=3).pack(side="right", fill="both",
-                                                                                        expand=True)
-
-
 def export_svg() -> None:
     """
     Export the current game board state to an SVG file.
@@ -169,9 +117,75 @@ def export_svg() -> None:
             file.write(svg_content)
         print(f"SVG exported to {file_path}")
     root.deiconify()
+def export_pgn() -> None:
+    """
+    Export the current game board state to an SVG file.
+
+    This function is triggered when the user clicks the "Export SVG" button. It hides the main window, prompts for a save location,
+    generates the SVG content of the current board state, and writes it to a file. The function then deactivates the main window
+    and prints a success message.
+
+    Returns:
+        None: This function does not return any value.
+    """
+
+    root.withdraw()  # Hide the main window
+    file_path = tk.filedialog.asksaveasfilename(defaultextension=".svg",
+                                                filetypes=[("PGN files", "*.pgn"), ("All files", "*.*")])
+
+    if file_path:
+        san_list.export_pgn(file_path)
+        print(f"PGN exported to {file_path}")
+    root.deiconify()
+def random_move(*e):
+    """
+    Perform a random move on the current chessboard.
+
+    This function stops any ongoing animations, generates a list of all possible legal moves,
+    and selects one at random to start an animation for that move if there are any legal moves available.
+    """
+    board.stop_animation()
+    legal_moves = list(board.legal_moves)
+    if not legal_moves: return
+    board.start_move_animation(random.choice(legal_moves))
+
+root = tk.Tk()
+root.title("AutoAnalyzer + Board integration demo")
+root.configure(background="#fcc")
+right = tk.Frame(root, bg="#ccf")
+right.pack(side="right",fill="both")
+
+board = DisplayBoard(root, animation_fps=120)
+board.configure(background="#fcc")
+board.pack(expand=True, fill="both",side="left",padx=10, pady=10)
+tracker = TopMovesTracker(ENGINE_PATH, on_analyze, top_n=3, min_steps=1)
+board.after(0, tracker.start)
+san_list = SanListFrame(right, on_select=on_select)
+san_list.pack(expand=True, fill="y")
+
+board.on_move(_on_move_callback)
 
 
-# Create the export button
-export_button = tk.Button(root, text="Export SVG", command=export_svg)
-export_button.pack(side="bottom")
+root.bind("<Key-r>", random_move)
+root.protocol("WM_DELETE_WINDOW", on_close)
+root.bind("<Right>", lambda e: san_list.next())
+root.bind("<Left>", lambda e: san_list.prev())
+tk.Button(right, text="Export SVG", command=export_svg,relief="ridge", bd=3).pack(fill="x",padx=10,pady=10)
+tk.Button(right, text="Export PGN", command=export_pgn,relief="ridge", bd=3).pack(fill="x",padx=10,pady=10)
+tk.Button(right, text="<", command=san_list.prev, relief="ridge", bd=3).pack(side="left", fill="both",expand=True,padx=10,pady=10)
+tk.Button(right, text=">", command=san_list.next, relief="ridge", bd=3).pack(side="right", fill="both",expand=True,padx=10,pady=10)
+
+
+
+om = OpeningManager()
+om.load_eco_pgn("analyze/eco.pgn")
+analyzer = AutoAnalyzer(
+    engine_path=ENGINE_PATH,
+    multipv=4,
+    on_new_analysis=on_new_analysis,
+    time_steps=[0.003, 0.012, 0.05, 0.2, 0.5, 2, 5],
+)
+
+
+
 root.mainloop()

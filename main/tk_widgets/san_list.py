@@ -502,17 +502,6 @@ class SanListFrame(tk.Frame):
         menu = tk.Menu(self, tearoff=0)
         menu.add_command(label="Edit comment...", command=lambda n=node: self.edit_comment(n))
         menu.add_separator()
-        #menu.add_command(label="Set color...", command=lambda n=node: self._pick_color_for_node(n))
-        #menu.add_command(label="Clear color", command=lambda n=node: self.set_move_color(n, None))
-        #menu.add_separator()
-
-        #nag_menu = tk.Menu(menu, tearoff=0)
-        #for sym in ["!!", "!", "!?", "?!", "?", "??"]:
-        #    nag_menu.add_command(label=sym, command=lambda s=sym, n=node: self.set_node_nag_by_symbol(n, s))
-        #nag_menu.add_command(label="Clear NAG", command=lambda n=node: self.clear_node_nag(n))
-        #menu.add_cascade(label="Set NAG", menu=nag_menu)
-
-        #menu.add_separator()
         menu.add_command(label="Delete move", command=lambda n=node: self._confirm_delete(n))
 
         try:
@@ -523,21 +512,12 @@ class SanListFrame(tk.Frame):
     def edit_comment(self, node: _Node):
         """Open a simple dialog to edit the comment for node."""
         initial = node.comment or ""
-        new = simpledialog.askstring("Edit comment", "Comment for move (use [%eval ...] for engine eval):",
+        new = simpledialog.askstring("Edit comment", "Comment for move:",
                                      initialvalue=initial, parent=self)
         if new is None:
             return
         node.comment = new.strip()
         self.refresh()
-
-    def _pick_color_for_node(self, node: _Node):
-        """Open color chooser and apply selected color to the node text."""
-        c = colorchooser.askcolor(title="Pick a color for this move")
-        if not c:
-            return
-        rgb, hexstr = c
-        if hexstr:
-            self.set_move_color(node, hexstr)
 
     def set_move_color(self, node: _Node, color_hex: str | None):
         """Set or clear the text color for a specific node and refresh view.
@@ -671,13 +651,11 @@ class SanListFrame(tk.Frame):
         rec(self._root)
         return res
 
-
     def _trigger_callback(self):
         if self._on_select and self._selected:
             self._on_select(self._selected, self._selected.fen)
         else:
             self._on_select(self._root, self._root.fen)
-
 
 # ---------------- Example usage ----------------
 
