@@ -1,8 +1,6 @@
 import random
 import tkinter as tk
 
-import chess
-
 from main.analyze.analyzer import map_analysis_to_movequality, ENGINE_PATH
 from main.analyze.auto_analyzer import AutoAnalyzer, MoveAnalysis
 from main.analyze.auto_analyzer_ import TopMovesTracker
@@ -58,56 +56,14 @@ def on_analyze(bests):
     board.safe_redraw()
 
 
-def on_select(node: SanListFrame._Node, fen, history):
-    """
-    This function handles the selection event for a chess node in a game.
-
-    Parameters:
-    - node (SanListFrame._Node): The selected chess node from a list frame.
-    - fen (str): The Forsyth-Edwards Notation (FEN) string representing the current board state.
-    - history (List[Dict[str, Any]]): A list of dictionaries containing past game moves and their corresponding FEN strings.
-
-    This function performs the following actions:
-    1. Stops any running animations on the chessboard.
-    2. If there is no history or if the current board position matches the last recorded position,
-       it sets the FEN to the selected fen and animates the transition to this position.
-    3. If the current board position does not match the last recorded position but matches the previous
-       position in the history, it starts a move animation for the last move.
-    4. If the current board position does not match either the selected fen or the last recorded position,
-       it sets the FEN to the last recorded FEN before the move and pushes the last move onto the chessboard without animation.
-    5. Clears any user drawings from the chessboard.
-    6. Resets the system arrows on the chessboard.
-    7. Updates the tracker's board state to the cloned version of the current chessboard.
-    """
+def on_select(node: SanListFrame._Node, fen):
     board.stop_animation()
-    if not history:
-        board.set_fen_with_animation(fen, lambda: tracker.set_board(board.clone_board()))
-
-    elif board.fen() == history[-1]["fen_before"]:
-        board.start_move_animation(chess.Move.from_uci(history[-1]["uci"]))
-    else:
-        board.set_fen(history[-1]["fen_before"])
-        board.push(chess.Move.from_uci(history[-1]["uci"]), True)
+    board.set_fen_with_animation(fen, lambda: tracker.set_board(board.clone_board()))
     board.clear_user_draw()
     board.system_arrows = []
-    tracker.set_board(board.clone_board())
 
 
 def on_new_analysis(ma: MoveAnalysis):
-    """
-    Handle the new analysis for a given MoveAnalysis object.
-
-    Parameters:
-        ma (MoveAnalysis): The MoveAnalysis object containing the quality and move information.
-
-    Summary:
-        This method is triggered when a new analysis is available. It maps the analysis result to a move quality,
-        updates the visual color of the selected node in the SAN list, and sets the move quality for the board.
-
-    Note:
-        This function assumes that there are helper functions `map_analysis_to_movequality`, `san_list.after`,
-        `rgb_to_hex`, and `board.move_quality_colors` defined elsewhere.
-    """
     quality = map_analysis_to_movequality(ma)
     san_list.after(0, lambda: san_list.set_move_color(san_list.get_selected_node(),
                                                       rgb_to_hex(board.move_quality_colors[quality])))
@@ -115,20 +71,6 @@ def on_new_analysis(ma: MoveAnalysis):
 
 
 def _on_move_callback(move, board_widget: DisplayBoard):
-    """
-    Handles the callback for a move event in the display board.
-
-    Args:
-        move (tuple): The coordinates of the move.
-        board_widget (DisplayBoard): The display board widget associated with the move.
-
-    Side effects:
-        - Updates the san_list to include the new move if it is selected.
-        - Adds the move to the cloned board.
-        - Analyzes the board and updates the title and move quality.
-        - Resets the system_arrows on the board.
-        - Updates the tracker's board state.
-    """
     c = board_widget.clone_board()
     c.pop()
     san = c.san(move)

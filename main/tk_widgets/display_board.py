@@ -1203,7 +1203,7 @@ class DisplayBoard(tk.Frame):
             for f, t in a[:-1]:
                 self.start_animation(f, t, lambda: None, False, None)
             self.start_animation(a[-1][0], a[-1][1],
-                                 lambda: [self.board.set_fen(self.board.starting_fen), self.redraw(), callback()],
+                                 lambda: [self.board.set_fen(fen), self.redraw(), callback()],
                                  False, None)
 
     def generate_svg(self, highlights: bool = True, circles: bool = True, arrows: bool = True) -> str:
@@ -1360,7 +1360,8 @@ if __name__ == '__main__':
 
                               legal_moves_circles_color=(180, 255, 200),
                               from_color=(200, 230, 200),
-                              to_color=(200, 230, 200)
+                              to_color=(200, 230, 200),
+                              #animation_fps=240
                               )
     anim_board.set_readonly(True)
     anim_board.config(bd=15, background="black")

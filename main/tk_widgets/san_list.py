@@ -87,7 +87,7 @@ class SanListFrame(tk.Frame):
 
             starting_fen: str = chess.STARTING_FEN,
             max_chars_per_line: int = 80,
-            on_select: t.Optional[t.Callable[["SanListFrame._Node", str, list], None]] = None,
+            on_select: t.Optional[t.Callable[["SanListFrame._Node", str], None]] = None,
             font: tuple[str, int] = ("Arial", 10, "bold"),
             bold_font: tuple[str, int, str] = ("Arial", 10, "bold"),
             color_paren: str = "#888888",
@@ -502,17 +502,17 @@ class SanListFrame(tk.Frame):
         menu = tk.Menu(self, tearoff=0)
         menu.add_command(label="Edit comment...", command=lambda n=node: self.edit_comment(n))
         menu.add_separator()
-        menu.add_command(label="Set color...", command=lambda n=node: self._pick_color_for_node(n))
-        menu.add_command(label="Clear color", command=lambda n=node: self.set_move_color(n, None))
-        menu.add_separator()
+        #menu.add_command(label="Set color...", command=lambda n=node: self._pick_color_for_node(n))
+        #menu.add_command(label="Clear color", command=lambda n=node: self.set_move_color(n, None))
+        #menu.add_separator()
 
-        nag_menu = tk.Menu(menu, tearoff=0)
-        for sym in ["!!", "!", "!?", "?!", "?", "??"]:
-            nag_menu.add_command(label=sym, command=lambda s=sym, n=node: self.set_node_nag_by_symbol(n, s))
-        nag_menu.add_command(label="Clear NAG", command=lambda n=node: self.clear_node_nag(n))
-        menu.add_cascade(label="Set NAG", menu=nag_menu)
+        #nag_menu = tk.Menu(menu, tearoff=0)
+        #for sym in ["!!", "!", "!?", "?!", "?", "??"]:
+        #    nag_menu.add_command(label=sym, command=lambda s=sym, n=node: self.set_node_nag_by_symbol(n, s))
+        #nag_menu.add_command(label="Clear NAG", command=lambda n=node: self.clear_node_nag(n))
+        #menu.add_cascade(label="Set NAG", menu=nag_menu)
 
-        menu.add_separator()
+        #menu.add_separator()
         menu.add_command(label="Delete move", command=lambda n=node: self._confirm_delete(n))
 
         try:
@@ -671,68 +671,12 @@ class SanListFrame(tk.Frame):
         rec(self._root)
         return res
 
-    # ---------------- History builder & callback ----------------
-    def get_history_for_node(self, node: _Node) -> list:
-        """
-        Return list of history dicts from root to `node` (inclusive).
-        Each entry: {
-            "san": str,
-            "uci": str,
-            "fen_before": str,
-            "fen_after": str,
-            "move_number": int,
-            "color": "white"|"black",
-            "nags": set(int),
-            "comment": str,
-            "annot_color": str|None
-        }
-        """
-        # build path from root
-        path = []
-        cur = node
-        while cur is not None and not cur.is_root():
-            path.append(cur)
-            cur = cur.parent
-        path.reverse()  # now from root to node
-
-        history = []
-        board = chess.Board(fen=self._root.fen)
-        for n in path:
-            fen_before = board.fen()
-            try:
-                mv = board.parse_san(n.san)
-            except Exception:
-                # fall back: try to find UCI if n.san might be in UCI
-                try:
-                    mv = chess.Move.from_uci(n.san)
-                except Exception:
-                    raise ValueError(f"Cannot parse move SAN '{n.san}' on position {board.fen()}")
-            board.push(mv)
-            fen_after = board.fen()
-            history.append({
-                "san": n.san,
-                "uci": mv.uci(),
-                "fen_before": fen_before,
-                "fen_after": fen_after,
-                "move_number": n.move_number,
-                "color": n.color,
-                "nags": set(n.nags),
-                "comment": n.comment,
-                "annot_color": n.annot_color,
-            })
-        return history
 
     def _trigger_callback(self):
         if self._on_select and self._selected:
-            try:
-                history = self.get_history_for_node(self._selected) if not self._selected.is_root() else []
-            except Exception:
-                history = []
-
-            self._on_select(self._selected, self._selected.fen, history)
-
+            self._on_select(self._selected, self._selected.fen)
         else:
-            self._on_select(self._root, self._root.fen, [])
+            self._on_select(self._root, self._root.fen)
 
 
 # ---------------- Example usage ----------------
@@ -759,12 +703,8 @@ if __name__ == "__main__":
 
 
     # sample on_select callback that prints full history
-    def on_select(node, fen, history):
+    def on_select(node, fen):
         print("SELECTED:", getattr(node, "san", None), "FEN:", fen)
-        print("HISTORY LENGTH:", len(history))
-        for h in history:
-            print(h["move_number"], h["san"], h["uci"], "->", h["fen_after"], "color:", h["annot_color"], "nags:",
-                  h["nags"])
 
 
     san_list = SanListFrame(root, starting_fen=chess.STARTING_FEN,
