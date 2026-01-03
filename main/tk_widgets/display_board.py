@@ -769,7 +769,9 @@ class DisplayBoard(tk.Frame):
             cx - radius, cy - radius, cx + radius, cy + radius,
             fill=bg_hex, outline=outline_hex, width=max(2, int(radius * 0.18))
         )
-        self.canvas.create_text(cx, cy, text=symbol, font=self.font, fill="black")
+        font = self.font.copy()
+        font.config(size=font_size)
+        self.canvas.create_text(cx, cy, text=symbol, font=font, fill="black")
 
     def _show_selected(self):
         """Highlight the selected square and optionally show legal move circles for that piece."""
