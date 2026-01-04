@@ -919,7 +919,7 @@ class DisplayBoard(tk.Frame):
 
         callbacks = {"callbacks":[],"at_end":[]}
         for i in self._anim_data:
-            callbacks["callbacks"].append(i["at_end"])
+            callbacks["at_end"].append(i["at_end"])
             if i["callback"]:
                 callbacks["callbacks"].append(i["callback_data"])
         self._anim_data = []
