@@ -85,41 +85,43 @@ class ChessAnalyzerApp:
             self.right, text="Engine", bg="#ccf", labelanchor="n"
         )
         engine_frame.pack(fill="x", padx=8, pady=(6, 8))
-
+        f = tk.Frame(engine_frame)
+        f.pack(fill="x", padx=8, pady=4)
         tk.Checkbutton(
-            engine_frame,
+            f,
             text="Analysis",
             variable=self.engine_enabled,
             command=self.toggle_analysis,
-            bg="#ccf"
-        ).pack(anchor="w", pady=2)
+        ).pack(side="left", pady=2)
 
         tk.Button(
-            engine_frame,
+            f,
             text="Re-analyze position ↺",
             command=self.reanalyze,
             relief="ridge", bd=3
-        ).pack(fill="x", pady=4)
+        ).pack(side="right", pady=4)
 
+
+        f1 = tk.Frame(engine_frame,bd=2)
+        f1.pack(fill="x", padx=8, pady=4)
         tk.Checkbutton(
-            engine_frame,
+            f1,
             text="Show best moves",
             variable=self.tracker_enabled,
             command=self.toggle_tracker,
-            bg="#ccf"
-        ).pack(anchor="w", pady=2)
+        ).pack(side="left", pady=2)
 
-        tk.Label(engine_frame, text="Number of top moves:", bg="#ccf").pack(anchor="w", pady=(4, 0))
+
 
         tk.Spinbox(
-            engine_frame,
+            f1,
             from_=1, to=10,
             textvariable=self.top_n_var,
             width=5,
             command=self.update_top_n,
             relief="ridge", bd=2
-        ).pack(anchor="w", pady=2)
-
+        ).pack(side="right", pady=2)
+        tk.Label(f1, text="Number of top moves:").pack(side="right", pady=2, padx=4)
     # ---------- Logic ----------
 
     def _init_logic(self):
@@ -149,6 +151,7 @@ class ChessAnalyzerApp:
         try:
             n = int(self.top_n_var.get())
             self.tracker.set_top_n(n)
+            self.tracker.callback(self.tracker.get_top_moves())
         except Exception:
             pass
 

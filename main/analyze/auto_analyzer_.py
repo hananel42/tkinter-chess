@@ -97,7 +97,6 @@ class TopMovesTracker:
             if n <= 0:
                 raise ValueError("top_n must be >= 1")
             self.top_n = n
-            # האיפוס יגרום ללולאה למחזר את ההגדרה בפעם הבאה שהיא מריצה
             self._new_board_event.set()
 
     def set_filters(self, max_drop_from_best: Optional[int] = None, min_stability: Optional[int] = None) -> None:
@@ -161,9 +160,8 @@ class TopMovesTracker:
             self._last_emitted = new.copy()
             try:
                 self.callback(new)
-            except Exception:
-                # אל תפסיק את הלולאה בגלל שגיאת callback
-                pass
+            except Exception as e:
+                print(e)
 
     # ---------------- core analyze loop ----------------
 
