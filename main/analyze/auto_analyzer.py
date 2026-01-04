@@ -343,7 +343,7 @@ class AutoAnalyzer:
 
                         delta = best_cp - (played_cp if played_cp is not None else 0)
                         best_gap = best_cp - second_cp
-                        mate = abs(best_cp) >= 100_000
+                        mate = abs(played_cp) >= 100_000
 
                         # confidence heuristic (improves with iterations and more multipv hits)
                         confidence = min(1.0, 0.25 + 0.25 * iteration + 0.15 * len(pvs))

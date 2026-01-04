@@ -1,13 +1,14 @@
 import random
 import tkinter as tk
 
-from main.analyze.analyzer import map_analysis_to_movequality, ENGINE_PATH
+from main.analyze.analyzer import map_analysis_to_move_quality
 from main.analyze.auto_analyzer import AutoAnalyzer, MoveAnalysis
 from main.analyze.auto_analyzer_ import TopMovesTracker
 from main.analyze.opening import OpeningManager
 from main.tk_widgets.display_board import DisplayBoard, MoveQuality
 from main.tk_widgets.san_list import SanListFrame
 
+ENGINE_PATH = "c:/stockfish/stockfish.exe"
 
 def rgb_to_hex(col):
     if isinstance(col, str):
@@ -27,7 +28,7 @@ class ChessAnalyzerApp:
 
         self.engine_enabled = tk.BooleanVar(self.root,True)
         self.tracker_enabled = tk.BooleanVar(self.root,True)
-
+        self.top_n_var = tk.IntVar(self.root, value=3)
 
         self._build_ui()
         self._init_logic()
@@ -108,6 +109,17 @@ class ChessAnalyzerApp:
             bg="#ccf"
         ).pack(anchor="w", pady=2)
 
+        tk.Label(engine_frame, text="Number of top moves:", bg="#ccf").pack(anchor="w", pady=(4, 0))
+
+        tk.Spinbox(
+            engine_frame,
+            from_=1, to=10,
+            textvariable=self.top_n_var,
+            width=5,
+            command=self.update_top_n,
+            relief="ridge", bd=2
+        ).pack(anchor="w", pady=2)
+
     # ---------- Logic ----------
 
     def _init_logic(self):
@@ -126,12 +138,19 @@ class ChessAnalyzerApp:
             engine_path=ENGINE_PATH,
             multipv=4,
             on_new_analysis=self.on_new_analysis,
-            time_steps=[0.003, 0.012, 0.05, 0.2, 0.5, 2, 5],
+            time_steps=[0.003, 0.012, 0.2, 0.5, 2, 5],
         )
 
         self.board.on_move(self.on_move)
 
     # ---------- Engine control ----------
+    # ---------- Engine controls helper ----------
+    def update_top_n(self):
+        try:
+            n = int(self.top_n_var.get())
+            self.tracker.set_top_n(n)
+        except Exception:
+            pass
 
     def toggle_analysis(self):
         if self.engine_enabled.get():
@@ -197,7 +216,7 @@ class ChessAnalyzerApp:
         self.board.system_arrows = []
 
     def on_new_analysis(self, ma: MoveAnalysis):
-        quality = map_analysis_to_movequality(ma)
+        quality = map_analysis_to_move_quality(ma)
 
         self.san_list.after(
             0,
