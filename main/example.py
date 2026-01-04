@@ -166,8 +166,9 @@ class ChessAnalyzerApp:
 
     def reanalyze(self):
         self.board.clear_last_move_quality()
-        if self.board.board.move_stack:
-            self.on_move(self.board.board.peek(), self.board)
+        copy = self.board.clone_board()
+        if copy.move_stack:
+            self.analyze(copy)
 
     def toggle_tracker(self):
         if self.tracker_enabled.get():
@@ -230,7 +231,17 @@ class ChessAnalyzerApp:
         )
 
         self.board.after(0, lambda: self.board.set_move_quality(quality))
-
+    def analyze(self,board_copy):
+        if not self.engine_enabled.get():return
+        if info := self.om.opening_from_board(board_copy):
+            self.root.title(info.name)
+            self.board.set_move_quality(MoveQuality.BOOK)
+            self.san_list.set_move_color(
+                self.san_list.get_selected_node(),
+                rgb_to_hex(self.board.move_quality_colors[MoveQuality.BOOK])
+            )
+        else:
+           self.analyzer.start_analayse(board_copy)
     def on_move(self, move, board_widget: DisplayBoard):
         board_widget.clear_last_move_quality()
 
@@ -244,16 +255,7 @@ class ChessAnalyzerApp:
         c.push(move)
         self.board.system_arrows = []
         self.tracker.set_board(self.board.clone_board())
-        if not self.engine_enabled.get():return
-        if info := self.om.opening_from_board(board_widget.board):
-            self.root.title(info.name)
-            self.board.set_move_quality(MoveQuality.BOOK)
-            self.san_list.set_move_color(
-                self.san_list.get_selected_node(),
-                rgb_to_hex(self.board.move_quality_colors[MoveQuality.BOOK])
-            )
-        else:
-           self.analyzer.start_analayse(c)
+        self.analyze(c)
 
 
 
