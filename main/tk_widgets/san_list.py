@@ -39,9 +39,29 @@ class SanListFrame(tk.Frame):
     """
 
     class _Node:
+        """
+        Represents a node in the tree structure representing moves and their metadata.
+
+        Attributes:
+            san (str): The SAN representation of the move.
+            fen (str): The FEN string representing the board state after the move.
+            move_number (int): The number of the move in the sequence.
+            color (str): The color of the player who made the move ("white" or "black").
+            parent (_Node | None): The parent node in the tree structure.
+            node_children (list[_Node]): A list of child nodes representing subsequent moves.
+            comment (str): An optional comment associated with the node.
+            nags (set[int]): A set of numeric NAG codes indicating special annotations for the move.
+            annot_color (str | None): The hexadecimal color string used for displaying move text.
+            extras (dict[str, Any]): Additional metadata about the node, such as engine evaluations or UI flags.
+
+        Methods:
+            add_child(node: _Node): Adds a child node to this node and updates its parent reference.
+            remove_child(node: _Node): Removes a child node from this node and updates its parent reference.
+            is_root() -> bool: Checks if this node is the root of the tree (i.e., has no parent).
+        """
         __slots__ = (
             "san", "fen", "move_number", "color", "parent",
-            "node_children", "comment", "nags", "annot_color"
+            "node_children", "comment", "nags", "annot_color","extras"
         )
 
         def __init__(
@@ -62,7 +82,7 @@ class SanListFrame(tk.Frame):
             self.comment = comment or ""
             self.nags: set[int] = set()  # numeric NAG codes (e.g. {1} for "!")
             self.annot_color: str | None = None  # hex color string for this move text (e.g. "#ff0000")
-
+            self.extras: dict[str, t.Any] = {}  # arbitrary per-node metadata (engine eval, UI flags, etc.)
         def add_child(self, node: "SanListFrame._Node"):
             node.parent = self
             self.node_children.append(node)
@@ -271,6 +291,31 @@ class SanListFrame(tk.Frame):
         self.refresh()
         self._trigger_callback()
         return True
+
+    def create_board(self) -> chess.Board:
+        """
+        Create and return a chess.Board representing the position
+        at the currently selected node.
+        """
+        board = chess.Board(fen=self._starting_fen)
+
+        # collect SAN moves from root -> selected
+        moves: list[str] = []
+        node = self._selected
+
+        while node and not node.is_root():
+            if node.san:
+                moves.append(node.san)
+            node = node.parent
+
+        # apply moves in correct order
+        for san in reversed(moves):
+            try:
+                board.push(board.parse_san(san))
+            except Exception as e:
+                raise ValueError(f"Failed to rebuild board from SAN '{san}': {e}")
+
+        return board
 
     # ---------------- PGN loading ----------------
     def load_pgn_from_string(self, pgn_text: str) -> bool:
