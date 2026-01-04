@@ -25,8 +25,8 @@ class ChessAnalyzerApp:
         self.colors = ["#f00", "#0f0", "#00f", "#ff0", "#0ff", "#f0f"]
         self.colors_index = 0
 
-        self.engine_enabled = True
-        self.tracker_enabled = True
+        self.engine_enabled = tk.BooleanVar(self.root,True)
+        self.tracker_enabled = tk.BooleanVar(self.root,True)
 
 
         self._build_ui()
@@ -36,42 +36,77 @@ class ChessAnalyzerApp:
     # ---------- UI ----------
 
     def _build_ui(self):
+        # === Right panel root ===
         self.right = tk.Frame(self.root, bg="#ccf")
-        self.right.pack(side="right", fill="both")
+        self.right.pack(side="right", fill="y")
 
+        # === Board ===
         self.board = DisplayBoard(self.root, animation_fps=120)
         self.board.configure(background="#fcc")
         self.board.pack(expand=True, fill="both", side="left", padx=10, pady=10)
 
-        self.san_list = SanListFrame(self.right, on_select=self.on_select)
-        self.san_list.pack(expand=True, fill="y")
+        # === Moves list (top, stretch) ===
+        moves_frame = tk.Frame(self.right, bg="#ccf")
+        moves_frame.pack(fill="both", expand=True, padx=8, pady=(8, 4))
 
-        tk.Button(self.right, text="Export SVG", command=self.export_svg,
-                  relief="ridge", bd=3).pack(fill="x", padx=10, pady=10)
-        tk.Button(self.right, text="Export PGN", command=self.export_pgn,
-                  relief="ridge", bd=3).pack(fill="x", padx=10, pady=10)
-        f = tk.Frame(self.right)
-        f.pack(expand=True, fill="both")
-        tk.Button(f, text="<", command=self.san_list.prev,
-                  relief="ridge", bd=3).pack(side="left", fill="both", expand=True, padx=10, pady=10)
-        tk.Button(f, text=">", command=self.san_list.next,
-                  relief="ridge", bd=3).pack(side="right", fill="both", expand=True, padx=10, pady=10)
-        # --- Engine controls ---
-        engine_frame = tk.LabelFrame(self.right, text="Engine", bg="#ccf")
-        engine_frame.pack(fill="x", padx=10, pady=10)
+        self.san_list = SanListFrame(moves_frame, on_select=self.on_select)
+        self.san_list.pack(fill="both", expand=True)
 
-        tk.Button(engine_frame, text="▶ Start analysis",
-                  command=self.start_analysis).pack(fill="x", pady=2)
+        # === Navigation + export (middle, compact) ===
+        controls_frame = tk.Frame(self.right, bg="#ccf")
+        controls_frame.pack(fill="x", padx=8, pady=4)
 
-        tk.Button(engine_frame, text="⏸ Stop analysis",
-                  command=self.stop_analysis).pack(fill="x", pady=2)
+        tk.Button(
+            controls_frame, text="Export SVG",
+            command=self.export_svg, relief="ridge", bd=3
+        ).pack(fill="x", pady=2)
 
-        tk.Button(engine_frame, text="🔁 Re-analyze position",
-                  command=self.reanalyze).pack(fill="x", pady=2)
+        tk.Button(
+            controls_frame, text="Export PGN",
+            command=self.export_pgn, relief="ridge", bd=3
+        ).pack(fill="x", pady=2)
 
-        tk.Button(engine_frame, text="🧠 Toggle best moves",
-                  command=self.toggle_tracker).pack(fill="x", pady=2)
+        nav_frame = tk.Frame(controls_frame, bg="#ccf")
+        nav_frame.pack(fill="x", pady=(6, 2))
 
+        tk.Button(
+            nav_frame, text="◀",
+            command=self.san_list.prev, relief="ridge", bd=3
+        ).pack(side="left", expand=True, fill="x", padx=(0, 4))
+
+        tk.Button(
+            nav_frame, text="▶",
+            command=self.san_list.next, relief="ridge", bd=3
+        ).pack(side="right", expand=True, fill="x", padx=(4, 0))
+
+        # === Engine controls (bottom, fixed) ===
+        engine_frame = tk.LabelFrame(
+            self.right, text="Engine", bg="#ccf", labelanchor="n"
+        )
+        engine_frame.pack(fill="x", padx=8, pady=(6, 8))
+
+        tk.Checkbutton(
+            engine_frame,
+            text="Analysis",
+            variable=self.engine_enabled,
+            command=self.toggle_analysis,
+            bg="#ccf"
+        ).pack(anchor="w", pady=2)
+
+        tk.Button(
+            engine_frame,
+            text="Re-analyze position ↺",
+            command=self.reanalyze,
+            relief="ridge", bd=3
+        ).pack(fill="x", pady=4)
+
+        tk.Checkbutton(
+            engine_frame,
+            text="Show best moves",
+            variable=self.tracker_enabled,
+            command=self.toggle_tracker,
+            bg="#ccf"
+        ).pack(anchor="w", pady=2)
 
     # ---------- Logic ----------
 
@@ -98,17 +133,14 @@ class ChessAnalyzerApp:
 
     # ---------- Engine control ----------
 
-    def start_analysis(self):
-        self.engine_enabled = True
-        if self.board.board.move_stack:
-            self.on_move(self.board.board.peek(),self.board)
-
-    def stop_analysis(self):
-        self.engine_enabled = False
-        self.board.clear_last_move_quality()
-        self.analyzer.stop_analyze()
-        self.board.safe_redraw()
-
+    def toggle_analysis(self):
+        if self.engine_enabled.get():
+            if self.board.board.move_stack:
+                self.on_move(self.board.board.peek(),self.board)
+        else:
+            self.board.clear_last_move_quality()
+            self.analyzer.stop_analyze()
+            self.board.safe_redraw()
 
     def reanalyze(self):
         self.board.clear_last_move_quality()
@@ -116,8 +148,7 @@ class ChessAnalyzerApp:
             self.on_move(self.board.board.peek(), self.board)
 
     def toggle_tracker(self):
-        self.tracker_enabled = not self.tracker_enabled
-        if self.tracker_enabled:
+        if self.tracker_enabled.get():
             self.tracker.set_board(self.board.clone_board())
         else:
             self.board.system_arrows = []
@@ -127,7 +158,7 @@ class ChessAnalyzerApp:
     # ---------- Callbacks ----------
 
     def on_analyze(self, bests):
-        if not self.tracker_enabled:
+        if not self.tracker_enabled.get():
             return
 
         if not bests:
@@ -191,7 +222,7 @@ class ChessAnalyzerApp:
         c.push(move)
         self.board.system_arrows = []
         self.tracker.set_board(self.board.clone_board())
-        if not self.engine_enabled:return
+        if not self.engine_enabled.get():return
         if info := self.om.opening_from_board(board_widget.board):
             self.root.title(info.name)
             self.board.set_move_quality(MoveQuality.BOOK)
