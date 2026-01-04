@@ -25,6 +25,10 @@ class ChessAnalyzerApp:
         self.colors = ["#f00", "#0f0", "#00f", "#ff0", "#0ff", "#f0f"]
         self.colors_index = 0
 
+        self.engine_enabled = True
+        self.tracker_enabled = True
+
+
         self._build_ui()
         self._init_logic()
         self._bind_events()
@@ -46,11 +50,28 @@ class ChessAnalyzerApp:
                   relief="ridge", bd=3).pack(fill="x", padx=10, pady=10)
         tk.Button(self.right, text="Export PGN", command=self.export_pgn,
                   relief="ridge", bd=3).pack(fill="x", padx=10, pady=10)
-
-        tk.Button(self.right, text="<", command=self.san_list.prev,
+        f = tk.Frame(self.right)
+        f.pack(expand=True, fill="both")
+        tk.Button(f, text="<", command=self.san_list.prev,
                   relief="ridge", bd=3).pack(side="left", fill="both", expand=True, padx=10, pady=10)
-        tk.Button(self.right, text=">", command=self.san_list.next,
+        tk.Button(f, text=">", command=self.san_list.next,
                   relief="ridge", bd=3).pack(side="right", fill="both", expand=True, padx=10, pady=10)
+        # --- Engine controls ---
+        engine_frame = tk.LabelFrame(self.right, text="Engine", bg="#ccf")
+        engine_frame.pack(fill="x", padx=10, pady=10)
+
+        tk.Button(engine_frame, text="▶ Start analysis",
+                  command=self.start_analysis).pack(fill="x", pady=2)
+
+        tk.Button(engine_frame, text="⏸ Stop analysis",
+                  command=self.stop_analysis).pack(fill="x", pady=2)
+
+        tk.Button(engine_frame, text="🔁 Re-analyze position",
+                  command=self.reanalyze).pack(fill="x", pady=2)
+
+        tk.Button(engine_frame, text="🧠 Toggle best moves",
+                  command=self.toggle_tracker).pack(fill="x", pady=2)
+
 
     # ---------- Logic ----------
 
@@ -75,9 +96,40 @@ class ChessAnalyzerApp:
 
         self.board.on_move(self.on_move)
 
+    # ---------- Engine control ----------
+
+    def start_analysis(self):
+        self.engine_enabled = True
+        if self.board.board.move_stack:
+            self.on_move(self.board.board.peek(),self.board)
+
+    def stop_analysis(self):
+        self.engine_enabled = False
+        self.board.clear_last_move_quality()
+        self.analyzer.stop_analyze()
+        self.board.safe_redraw()
+
+
+    def reanalyze(self):
+        self.board.clear_last_move_quality()
+        if self.board.board.move_stack:
+            self.on_move(self.board.board.peek(), self.board)
+
+    def toggle_tracker(self):
+        self.tracker_enabled = not self.tracker_enabled
+        if self.tracker_enabled:
+            self.tracker.set_board(self.board.clone_board())
+        else:
+            self.board.system_arrows = []
+            self.board.safe_redraw()
+
+
     # ---------- Callbacks ----------
 
     def on_analyze(self, bests):
+        if not self.tracker_enabled:
+            return
+
         if not bests:
             return
 
@@ -137,7 +189,9 @@ class ChessAnalyzerApp:
             self.san_list.add_move(san)
 
         c.push(move)
-
+        self.board.system_arrows = []
+        self.tracker.set_board(self.board.clone_board())
+        if not self.engine_enabled:return
         if info := self.om.opening_from_board(board_widget.board):
             self.root.title(info.name)
             self.board.set_move_quality(MoveQuality.BOOK)
@@ -146,10 +200,10 @@ class ChessAnalyzerApp:
                 rgb_to_hex(self.board.move_quality_colors[MoveQuality.BOOK])
             )
         else:
-            self.analyzer.start_analayse(c)
+           self.analyzer.start_analayse(c)
 
-        self.board.system_arrows = []
-        self.tracker.set_board(self.board.clone_board())
+
+
 
     # ---------- Utilities ----------
 

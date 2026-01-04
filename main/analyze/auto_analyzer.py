@@ -237,7 +237,7 @@ class AutoAnalyzer:
 
     # --------------------------------------------------------
     def stop_analyze(self):
-        self._stop_event.set()
+        self._cancel_event.set()
 
     def _worker_loop(self):
         last_task = None
