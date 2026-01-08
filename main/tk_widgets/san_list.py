@@ -154,6 +154,7 @@ class SanListFrame(tk.Frame):
             state="disabled",
             cursor="arrow",
             height=10,
+            width=50,
             font=self._font,
             padx=5,
             pady=5,

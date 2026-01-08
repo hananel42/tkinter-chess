@@ -4,7 +4,6 @@ import chess
 from main.analyze.analyzer import map_analysis_to_move_quality
 from main.analyze.auto_analyzer import AutoAnalyzer, MoveAnalysis
 from main.analyze.auto_analyzer_ import TopMovesTracker
-from main.analyze.opening import OpeningManager
 from main.tk_widgets.display_board import DisplayBoard, MoveQuality
 from main.tk_widgets.san_list import SanListFrame
 from main.opening.opening_explorer_widget import OpeningExplorerWidget
@@ -24,7 +23,7 @@ class ChessAnalyzerApp:
         self.root = tk.Tk()
         self.root.title("AutoAnalyzer + Board integration demo")
         self.root.configure(background="#fcc")
-
+        self.root.geometry("1300x800")
         self.colors = ["#f00", "#0f0", "#00f", "#ff0", "#0ff", "#f0f"]
         self.colors_index = 0
 
@@ -53,13 +52,14 @@ class ChessAnalyzerApp:
         moves_frame.pack(fill="both", expand=True, padx=8, pady=(8, 4))
 
         self.san_list = SanListFrame(moves_frame, on_select=self.on_select)
-        self.san_list.pack(fill="both", expand=True)
+        self.san_list.pack(fill="both",expand=True,)
 
         # === Navigation + export (middle, compact) ===
         controls_frame = tk.Frame(self.right, bg="#ccf")
         controls_frame.pack(fill="x", padx=8, pady=4)
         opening_frame = tk.Frame(self.right, bg="#ccf")
         opening_frame.pack(fill="x", padx=8, pady=4)
+
         self.o_m = OpeningExplorerWidget(opening_frame,"book.tsv",move_callback=self._on_ex_m)
         self.o_m.pack(fill="x", padx=8, pady=4)
         tk.Button(
@@ -141,8 +141,6 @@ class ChessAnalyzerApp:
         )
         self.board.after(0, self.tracker.start)
 
-        self.om = OpeningManager()
-        self.om.load_eco_pgn("analyze/eco.pgn")
 
         self.analyzer = AutoAnalyzer(
             engine_path=ENGINE_PATH,
@@ -215,6 +213,7 @@ class ChessAnalyzerApp:
 
         def apply():
             self.tracker.set_board(self.board.clone_board())
+            self.o_m.last_opening_name = None
             self.o_m.set_fen(self.board.fen())
             if node.parent:
                 self.board.board.set_fen(node.parent.fen)
@@ -239,22 +238,14 @@ class ChessAnalyzerApp:
         self.board.after(0, lambda: self.board.set_move_quality(quality))
     def analyze(self,board_copy):
         if not self.engine_enabled.get():return
-        if info := self.om.opening_from_board(board_copy):
-            self.root.title(info.name)
-            self.board.set_move_quality(MoveQuality.BOOK)
-            self.san_list.set_move_color(
-                self.san_list.get_selected_node(),
-                rgb_to_hex(self.board.move_quality_colors[MoveQuality.BOOK])
-            )
-        else:
-           self.analyzer.start_analyse(board_copy)
+        self.analyzer.start_analyse(board_copy)
     def on_move(self, move, board_widget: DisplayBoard):
         board_widget.clear_last_move_quality()
 
         c = board_widget.clone_board()
         c.pop()
         san = c.san(move)
-
+        self.o_m.set_fen(board_widget.fen())
         if self.san_list.get_selected_node().fen == c.fen():
             self.san_list.add_move(san)
 
@@ -262,9 +253,7 @@ class ChessAnalyzerApp:
         self.board.system_arrows = []
         self.tracker.set_board(self.board.clone_board())
         self.analyze(c)
-        try:
-            self.o_m.push(move)
-        except:pass
+
 
 
 

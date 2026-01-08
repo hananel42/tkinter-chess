@@ -150,6 +150,11 @@ class OpeningBookTree:
         root_fen = self._fen_key(chess.Board())
         self._ensure_node(root_fen)
 
+        # --- השינוי הקטן: assign default name for starting position ---
+        root_node = self.nodes[root_fen]
+        root_node.names_counter["Starting board"] = 1
+        root_node.eco_counter[""] = 1  # אפשר להשאיר ריק אם אין ECO
+
         for row in rows[1:]:
             if moves_idx >= len(row):
                 continue
