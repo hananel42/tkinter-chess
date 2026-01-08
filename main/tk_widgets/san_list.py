@@ -408,10 +408,6 @@ class SanListFrame(tk.Frame):
 
         # Render recursively (inline variations)
         def render_node(node: SanListFrame._Node, is_var: bool = False):
-            if node.is_root():
-                for c in node.node_children:
-                    render_node(c, is_var=False)
-                return
 
             style = "variation" if is_var else "mainline"
 
@@ -539,9 +535,6 @@ class SanListFrame(tk.Frame):
         """
         Build and show context menu for a node. Options:
           - Edit comment
-          - Set color...
-          - Set NAG: !, !!, ?, ??, !?, ?!
-          - Clear NAG
           - Delete move
         """
         menu = tk.Menu(self, tearoff=0)
@@ -713,7 +706,12 @@ if __name__ == "__main__":
 
     display_board = DisplayBoard(root)
 
-
+    def on_select(node, fen):
+        def at_end():
+            if node.is_root():return
+            display_board.set_fen(node.parent.fen)
+            display_board.push(display_board.board.parse_san(node.san))
+        display_board.set_fen_with_animation(fen,at_end)
     def on_move(move: chess.Move, board):
         m = board.board.pop()
         san = board.board.san(m)
@@ -723,11 +721,6 @@ if __name__ == "__main__":
 
     display_board.on_move(on_move)
     display_board.pack(side="left", fill="both", expand=True)
-
-
-    # sample on_select callback that prints full history
-    def on_select(node, fen):
-        print("SELECTED:", getattr(node, "san", None), "FEN:", fen)
 
 
     san_list = SanListFrame(root, starting_fen=chess.STARTING_FEN,

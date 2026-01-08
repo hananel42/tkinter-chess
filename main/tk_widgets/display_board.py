@@ -271,7 +271,7 @@ class DisplayBoard(tk.Frame):
                 MoveQuality.INACCURACY: "?!",
                 MoveQuality.MISTAKE: "?",
                 MoveQuality.BLUNDER: "??",
-                MoveQuality.MISS: "∅",
+                MoveQuality.MISS: "X",
             }
         self.auto_queen_promotion = auto_queen_promotion
         # Mouse bindings
@@ -704,7 +704,7 @@ class DisplayBoard(tk.Frame):
     def _draw_pieces(self):
         """Draw all pieces on the board using Unicode symbols."""
         special = [*[self.row_col_of(i["from_square"]) for i in self._anim_data]]
-        if self._selected_square and self._dragging_piece:
+        if self._selected_square is not None and self._dragging_piece:
             special.append(self.row_col_of(self._selected_square))
         for r in range(8):
             for c in range(8):
@@ -1386,39 +1386,7 @@ class DisplayBoard(tk.Frame):
 
 
 if __name__ == '__main__':
-
-    import sys
-
-    # Example usage: run the module and pass an optional FEN on command line.
     root = tk.Tk()
-    d = DisplayBoard(root, input_callback=lambda move, b: print(move), border=5, border_bg="#000",
-                     auto_stop_animation=True)
-    d.flip_board()
-    d.pack(expand=True, fill="both", side="left")
-
-
-    def reset():
-        """Resets the chess board to its starting position with an animation."""
-        d.set_fen_with_animation(d.board.starting_fen)
-
-
-    def undo():
-        if d.undo():
-            d.allow_input = False
-
-
-    def redo():
-        if d.redo():
-            d.allow_input = not d.redo_stack
-
-
-    root.bind("<Return>", lambda e: reset())
-    tk.Button(d, text="<", command=undo, bg="#ccc").pack(side="left", fill="both", expand=True)
-    tk.Button(d, text=">", command=redo, bg="#ccc").pack(side="right", fill="both", expand=True)
-    if len(sys.argv) > 1:
-        d.set_fen(sys.argv[1])
-        d.update()
-
     anim_board = DisplayBoard(root,
 
                               legal_moves_circles_color=(180, 255, 200),

@@ -1,12 +1,13 @@
 import random
 import tkinter as tk
-
+import chess
 from main.analyze.analyzer import map_analysis_to_move_quality
 from main.analyze.auto_analyzer import AutoAnalyzer, MoveAnalysis
 from main.analyze.auto_analyzer_ import TopMovesTracker
 from main.analyze.opening import OpeningManager
 from main.tk_widgets.display_board import DisplayBoard, MoveQuality
 from main.tk_widgets.san_list import SanListFrame
+from main.opening.opening_explorer_widget import OpeningExplorerWidget
 
 ENGINE_PATH = "c:/stockfish/stockfish.exe"
 
@@ -17,6 +18,7 @@ def rgb_to_hex(col):
     return f"#{r:02x}{g:02x}{b:02x}"
 
 
+# noinspection PyTypeChecker
 class ChessAnalyzerApp:
     def __init__(self):
         self.root = tk.Tk()
@@ -56,7 +58,10 @@ class ChessAnalyzerApp:
         # === Navigation + export (middle, compact) ===
         controls_frame = tk.Frame(self.right, bg="#ccf")
         controls_frame.pack(fill="x", padx=8, pady=4)
-
+        opening_frame = tk.Frame(self.right, bg="#ccf")
+        opening_frame.pack(fill="x", padx=8, pady=4)
+        self.o_m = OpeningExplorerWidget(opening_frame,"book.tsv",move_callback=self._on_ex_m)
+        self.o_m.pack(fill="x", padx=8, pady=4)
         tk.Button(
             controls_frame, text="Export SVG",
             command=self.export_svg, relief="ridge", bd=3
@@ -123,7 +128,10 @@ class ChessAnalyzerApp:
         ).pack(side="right", pady=2)
         tk.Label(f1, text="Number of top moves:").pack(side="right", pady=2, padx=4)
     # ---------- Logic ----------
-
+    def _on_ex_m(self, e):
+        move = chess.Move.from_uci(e)
+        if move in self.board.legal_moves:
+            self.board.start_move_animation(move)
     def _init_logic(self):
         self.tracker = TopMovesTracker(
             ENGINE_PATH,
@@ -140,20 +148,17 @@ class ChessAnalyzerApp:
             engine_path=ENGINE_PATH,
             multipv=4,
             on_new_analysis=self.on_new_analysis,
-            time_steps=[0.003, 0.012, 0.2, 0.5, 2, 5],
+            time_steps=[0.003, 0.012, 0.2, 0.5, 2, 5]
         )
 
         self.board.on_move(self.on_move)
 
-    # ---------- Engine control ----------
     # ---------- Engine controls helper ----------
     def update_top_n(self):
-        try:
-            n = int(self.top_n_var.get())
-            self.tracker.set_top_n(n)
-            self.tracker.callback(self.tracker.get_top_moves())
-        except Exception:
-            pass
+        n = int(self.top_n_var.get())
+        self.tracker.set_top_n(n)
+        self.tracker.callback(self.tracker.get_top_moves())
+
 
     def toggle_analysis(self):
         if self.engine_enabled.get():
@@ -205,11 +210,12 @@ class ChessAnalyzerApp:
 
         self.board.safe_redraw()
 
-    def on_select(self, node: SanListFrame._Node, fen):
+    def on_select(self, node, fen):
         self.board.stop_animation()
 
         def apply():
             self.tracker.set_board(self.board.clone_board())
+            self.o_m.set_fen(self.board.fen())
             if node.parent:
                 self.board.board.set_fen(node.parent.fen)
                 move = self.board.board.parse_san(node.san)
@@ -241,7 +247,7 @@ class ChessAnalyzerApp:
                 rgb_to_hex(self.board.move_quality_colors[MoveQuality.BOOK])
             )
         else:
-           self.analyzer.start_analayse(board_copy)
+           self.analyzer.start_analyse(board_copy)
     def on_move(self, move, board_widget: DisplayBoard):
         board_widget.clear_last_move_quality()
 
@@ -256,6 +262,10 @@ class ChessAnalyzerApp:
         self.board.system_arrows = []
         self.tracker.set_board(self.board.clone_board())
         self.analyze(c)
+        try:
+            self.o_m.push(move)
+        except:pass
+
 
 
 
@@ -305,8 +315,14 @@ class ChessAnalyzerApp:
     # ---------- Run ----------
 
     def run(self):
+        """
+        Run the GUI application by entering the main event loop of Tkinter.
+
+        This method initializes and starts the main window's event loop, allowing it to display and respond to user interactions.
+        """
         self.root.mainloop()
 
 
 if __name__ == "__main__":
     ChessAnalyzerApp().run()
+
