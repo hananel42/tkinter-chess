@@ -737,10 +737,10 @@ class DisplayBoard(tk.Frame):
             if self.flipped:
                 fr2, fc2 = 7 - fr, 7 - fc
                 tr2, tc2 = 7 - tr, 7 - tc
-            start = (fc2 * self.square_size + self.square_size // 2,
-                     fr2 * self.square_size + self.square_size // 2)
-            end = (tc2 * self.square_size + self.square_size // 2,
-                   tr2 * self.square_size + self.square_size // 2)
+            start = (fc2 * self.square_size + self.square_size / 2,
+                     fr2 * self.square_size + self.square_size / 2)
+            end = (tc2 * self.square_size + self.square_size / 2,
+                   tr2 * self.square_size + self.square_size / 2)
             self._draw_arrow(start, end, color=color, width=width)
 
     def _get_move_quality_draw_info(self, color, symbol, square):
@@ -1095,8 +1095,8 @@ class DisplayBoard(tk.Frame):
         if self.flipped:
             col = 7 - col
             row = 7 - row
-        center_x = col * self.square_size + self.square_size // 2
-        center_y = (7 - row) * self.square_size + self.square_size // 2
+        center_x = col * self.square_size + self.square_size / 2
+        center_y = (7 - row) * self.square_size + self.square_size / 2
         return center_x, center_y
 
     def flip_board(self):
