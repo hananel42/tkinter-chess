@@ -1,14 +1,10 @@
 import random
 import tkinter as tk
 import chess
-from main.analyze.analyzer import map_analysis_to_move_quality
-from main.analyze.auto_analyzer import AutoAnalyzer, MoveAnalysis
-from main.analyze.auto_analyzer_ import TopMovesTracker
-from main.tk_widgets.display_board import DisplayBoard, MoveQuality
+from main.tk_widgets.display_board import DisplayBoard
 from main.tk_widgets.san_list import SanListFrame
 from main.opening.opening_explorer_widget import OpeningExplorerWidget
 
-ENGINE_PATH = "c:/stockfish/stockfish.exe"
 
 def rgb_to_hex(col):
     if isinstance(col, str):
@@ -27,9 +23,6 @@ class ChessAnalyzerApp:
         self.colors = ["#f00", "#0f0", "#00f", "#ff0", "#0ff", "#f0f"]
         self.colors_index = 0
 
-        self.engine_enabled = tk.BooleanVar(self.root,True)
-        self.tracker_enabled = tk.BooleanVar(self.root,True)
-        self.top_n_var = tk.IntVar(self.root, value=3)
 
         self._build_ui()
         self._init_logic()
@@ -85,134 +78,19 @@ class ChessAnalyzerApp:
             command=self.san_list.next, relief="ridge", bd=3
         ).pack(side="right", expand=True, fill="x", padx=(4, 0))
 
-        # === Engine controls (bottom, fixed) ===
-        engine_frame = tk.LabelFrame(
-            self.right, text="Engine", bg="#ccf", labelanchor="n"
-        )
-        engine_frame.pack(fill="x", padx=8, pady=(6, 8))
-        f = tk.Frame(engine_frame)
-        f.pack(fill="x", padx=8, pady=4)
-        tk.Checkbutton(
-            f,
-            text="Analysis",
-            variable=self.engine_enabled,
-            command=self.toggle_analysis,
-        ).pack(side="left", pady=2)
 
-        tk.Button(
-            f,
-            text="Re-analyze position ↺",
-            command=self.reanalyze,
-            relief="ridge", bd=3
-        ).pack(side="right", pady=4)
-
-
-        f1 = tk.Frame(engine_frame,bd=2)
-        f1.pack(fill="x", padx=8, pady=4)
-        tk.Checkbutton(
-            f1,
-            text="Show best moves",
-            variable=self.tracker_enabled,
-            command=self.toggle_tracker,
-        ).pack(side="left", pady=2)
-
-
-
-        tk.Spinbox(
-            f1,
-            from_=1, to=10,
-            textvariable=self.top_n_var,
-            width=5,
-            command=self.update_top_n,
-            relief="ridge", bd=2
-        ).pack(side="right", pady=2)
-        tk.Label(f1, text="Number of top moves:").pack(side="right", pady=2, padx=4)
     # ---------- Logic ----------
     def _on_ex_m(self, e):
         move = chess.Move.from_uci(e)
         if move in self.board.legal_moves:
             self.board.start_move_animation(move)
     def _init_logic(self):
-        self.tracker = TopMovesTracker(
-            ENGINE_PATH,
-            self.on_analyze,
-            top_n=3,
-            min_steps=1
-        )
-        self.board.after(0, self.tracker.start)
-
-
-        self.analyzer = AutoAnalyzer(
-            engine_path=ENGINE_PATH,
-            multipv=4,
-            on_new_analysis=self.on_new_analysis,
-            time_steps=[0.003, 0.012, 0.2, 0.5, 2, 5]
-        )
-
         self.board.on_move(self.on_move)
-
-    # ---------- Engine controls helper ----------
-    def update_top_n(self):
-        n = int(self.top_n_var.get())
-        self.tracker.set_top_n(n)
-        self.tracker.callback(self.tracker.get_top_moves())
-
-
-    def toggle_analysis(self):
-        if self.engine_enabled.get():
-            if self.board.board.move_stack:
-                self.on_move(self.board.board.peek(),self.board)
-        else:
-            self.board.clear_last_move_quality()
-            self.analyzer.stop_analyze()
-            self.board.safe_redraw()
-
-    def reanalyze(self):
-        self.board.clear_last_move_quality()
-        copy = self.board.clone_board()
-        if copy.move_stack:
-            self.analyze(copy)
-
-    def toggle_tracker(self):
-        if self.tracker_enabled.get():
-            self.tracker.set_board(self.board.clone_board())
-        else:
-            self.board.system_arrows = []
-            self.board.safe_redraw()
-
-
-    # ---------- Callbacks ----------
-
-    def on_analyze(self, bests):
-        if not self.tracker_enabled.get():
-            return
-
-        if not bests:
-            return
-
-        self.board.system_arrows = []
-
-        for move, _ in bests[1:]:
-            self.board.draw_arrow(
-                *self.board.row_col_of(move.from_square),
-                *self.board.row_col_of(move.to_square),
-                "#88f", 5, delete=False, is_user=False
-            )
-
-        best_move = bests[0][0]
-        self.board.draw_arrow(
-            *self.board.row_col_of(best_move.from_square),
-            *self.board.row_col_of(best_move.to_square),
-            (80, 80, 180), 5, delete=False, is_user=False
-        )
-
-        self.board.safe_redraw()
 
     def on_select(self, node, fen):
         self.board.stop_animation()
 
         def apply():
-            self.tracker.set_board(self.board.clone_board())
             self.o_m.last_opening_name = None
             self.o_m.set_fen(self.board.fen())
             if node.parent:
@@ -224,42 +102,16 @@ class ChessAnalyzerApp:
         self.board.clear_user_draw()
         self.board.system_arrows = []
 
-    def on_new_analysis(self, ma: MoveAnalysis):
-        quality = map_analysis_to_move_quality(ma)
 
-        self.san_list.after(
-            0,
-            lambda: self.san_list.set_move_color(
-                self.san_list.get_selected_node(),
-                rgb_to_hex(self.board.move_quality_colors[quality])
-            )
-        )
 
-        self.board.after(0, lambda: self.board.set_move_quality(quality))
-    def analyze(self,board_copy):
-        if not self.engine_enabled.get():return
-        self.analyzer.start_analyse(board_copy)
     def on_move(self, move, board_widget: DisplayBoard):
         board_widget.clear_last_move_quality()
-
         c = board_widget.clone_board()
         c.pop()
         san = c.san(move)
         self.o_m.set_fen(board_widget.fen())
         if self.san_list.get_selected_node().fen == c.fen():
             self.san_list.add_move(san)
-
-        c.push(move)
-        self.board.system_arrows = []
-        self.tracker.set_board(self.board.clone_board())
-        self.analyze(c)
-
-
-
-
-
-
-    # ---------- Utilities ----------
 
     def random_move(self, *_):
         self.board.stop_animation()
@@ -287,8 +139,7 @@ class ChessAnalyzerApp:
         self.root.deiconify()
 
     def on_close(self):
-        self.analyzer.quit()
-        self.tracker.close()
+        print("goodbye")
         self.root.destroy()
 
     # ---------- Bindings ----------
